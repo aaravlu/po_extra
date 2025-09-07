@@ -34,7 +34,6 @@ def fetch_p_contents(driver, target_url: str):
 driver = webdriver.Chrome(options=options)
 
 try:
-    last_err = None
     for attempt in range(1, MAX_RETRIES + 1):
         try:
             p_contents = fetch_p_contents(driver, url)
@@ -49,18 +48,17 @@ try:
                     f.write(f"\n{content}\n\n")
             break
         except Exception as e:
-            last_err = e
             if attempt < MAX_RETRIES:
                 backoff = BASE_BACKOFF * (2 ** (attempt - 1))
-                print(f"第 {attempt} 次尝试失败：{e}，{backoff}s 后重试...")
+                print(f"Attempt {attempt} failed: {e}. Retrying in {backoff}s ...")
                 time.sleep(backoff)
                 try:
                     driver.delete_all_cookies()
                 except Exception:
                     pass
             else:
-                raise
+                raise RuntimeError(f"All {MAX_RETRIES} attempts failed during fetching and parsing") from e
 except Exception as e:
-    print(f"发生错误: {e}")
+    print(f"Error occurred: {e}")
 finally:
     driver.quit()
