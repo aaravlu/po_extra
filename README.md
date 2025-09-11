@@ -2,7 +2,7 @@
 
 为了提取华科俱乐部微信公众号文章内容做的爬虫工具，旨在更好地迁移文章到俱乐部主页，和俱乐部的项目[post_scraper](https://github.com/hust-open-atom-club/post_scraper) ，本项目成熟后，将迁移到该仓库。
 
-以下是主页使用的文章管理模板，更多参考https://github.com/hust-open-atom-club/OpenAtomClub/blob/master/pages/_news/：
+以下是主页使用的文章管理模板，更多参考https://github.com/hust-open-atom-club/OpenAtomClub/blob/master/pages/_news/  ：
 
 ```
 ---
