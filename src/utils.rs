@@ -1,3 +1,8 @@
+use anyhow::Context;
+use anyhow::anyhow;
+use log::info;
+use std::fs;
+
 use scraper::{Html, Selector};
 use tokio::runtime::{Builder, Runtime};
 
@@ -9,8 +14,8 @@ pub fn init_logging() {
                 buf,
                 "[{} {}:{}] {}",
                 record.level(),
-                record.file().unwrap_or("unknown"),
-                record.line().unwrap_or(0),
+                record.file().unwrap(),
+                record.line().unwrap(),
                 record.args()
             )
         })
@@ -27,9 +32,15 @@ pub struct HtmlElement {
     href: Box<str>,
     tag: Box<str>,
 }
+impl Into<String> for HtmlElement {
+    fn into(self) -> String {
+        format!("tag: {}, href: {}\n", self.tag, self.href)
+    }
+}
+
 pub fn collect_some_html_element(body: &str, tag: &str) -> Vec<HtmlElement> {
     let document = Html::parse_document(body);
-    let selector = Selector::parse(tag).unwrap();
+    let selector = Selector::parse(tag).expect("Fail to parse tag");
 
     let mut html_elements = Vec::new();
 
@@ -48,6 +59,50 @@ pub fn collect_some_html_element(body: &str, tag: &str) -> Vec<HtmlElement> {
 pub async fn get_body(url: &str) -> anyhow::Result<String> {
     let body = reqwest::get(url).await?.text().await?;
     Ok(body)
+}
+
+pub fn get_config_content() -> anyhow::Result<String> {
+    const CONFIG_EXAMPLE: &str = "base_url = ''\nmodel_id = ''\napi_key = ''";
+
+    let config_dir_path = dirs::config_dir()
+        .ok_or_else(|| {
+            info!("Fail to get config dir");
+            anyhow!("Fail to get config dir")
+        })?
+        .join("po_extra");
+    let config_file_path = config_dir_path.join("config.toml");
+
+    match (config_dir_path.exists(), config_file_path.exists()) {
+        (false, _) => {
+            // Directory does not exist
+            fs::create_dir_all(&config_dir_path).with_context(|| {
+                format!("Failed to create config directory: {:?}", config_dir_path)
+            })?;
+            fs::write(&config_file_path, CONFIG_EXAMPLE).with_context(|| {
+                format!(
+                    "Failed to write example config file to: {:?}",
+                    config_file_path
+                )
+            })?;
+        }
+        (true, false) => {
+            // Directory exists but file does not
+            fs::write(&config_file_path, CONFIG_EXAMPLE).with_context(|| {
+                format!(
+                    "Failed to write example config file to: {:?}",
+                    config_file_path
+                )
+            })?;
+        }
+        (true, true) => {
+            // Both directory and file exist
+            let content = fs::read_to_string(&config_file_path)
+                .with_context(|| format!("Failed to read config file: {:?}", config_file_path))?;
+            return Ok(content);
+        }
+    }
+
+    Ok(CONFIG_EXAMPLE.to_string())
 }
 
 #[cfg(test)]
